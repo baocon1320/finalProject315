@@ -413,6 +413,7 @@ void execute() {
           // functionally complete, needs stats
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
           dmem.write(addr, rf[ld_st.instr.ld_st_imm.rt]);
+          caches.access(addr);
           stats.numRegReads += 2;
           stats.numMemWrites++;  
           break;
@@ -420,6 +421,7 @@ void execute() {
           // functionally complete, needs stats
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
           rf.write(ld_st.instr.ld_st_imm.rt, dmem[addr]);
+          caches.access(addr);
           stats.numMemReads++;
           stats.numRegReads++;
           stats.numRegWrites++;
@@ -428,6 +430,7 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
           dmem.write(addr, rf[ld_st.instr.ld_st_reg.rt]);
+          caches.access(addr);
           stats.numRegReads += 3;
           stats.numMemWrites++;          
           break;
@@ -435,6 +438,7 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
           dmem.write(ld_st.instr.ld_st_reg.rt, dmem[addr]);
+          caches.access(addr);
           stats.numRegReads += 2;
           stats.numRegWrites++;
           stats.numMemReads++; 
@@ -443,6 +447,7 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
           dmem.write(addr, rf[ld_st.instr.ld_st_imm.rt]);
+          caches.access(addr);
           stats.numRegReads += 2;
           stats.numMemWrites++; 
           break;
@@ -450,6 +455,7 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
           rf.write(ld_st.instr.ld_st_imm.rt, dmem[addr]);
+          caches.access(addr);
           stats.numMemReads++;
           stats.numRegReads++;
           stats.numRegWrites++;
@@ -457,7 +463,9 @@ void execute() {
         case STRBR:
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
+          
           dmem.write(addr, rf[ld_st.instr.ld_st_reg.rt]);
+          caches.access(addr);
           stats.numRegReads+=3;
           stats.numMemWrites++;
           break;
@@ -465,6 +473,7 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
           dmem.write(ld_st.instr.ld_st_reg.rt, dmem[addr]);
+          caches.access(addr);
           stats.numRegReads+=2;
           stats.numRegWrites++;
           stats.numMemReads++;
@@ -484,6 +493,7 @@ void execute() {
                 if(list&mask){
                     //dmem.cache need to implement
                     dmem.write(addr, rf[i]);
+                    caches.access(addr);
                     addr += 4;
                     stats.numRegReads++;
                     stats.numMemWrites++;
@@ -511,6 +521,7 @@ void execute() {
                     {
                         rf.write(i, dmem[addr]);                       
                     }
+                    caches.access(addr);
                     addr += 4;
                     stats.numMemReads++;
                     stats.numRegWrites++;
@@ -574,10 +585,12 @@ void execute() {
                 if(i == 15)
                 {
                     rf.write(PC_REG, dmem[addr]);
+                    caches.access(addr);
                     addr += 4;
                 }                    
                 else
                 {   rf.write(i, dmem[addr]);
+                    caches.access(addr);
                     addr += 4;                
                 }
                 stats.numMemReads++;
@@ -595,7 +608,9 @@ void execute() {
       for (i=0, mask = 1; i<n; i++, mask<<=1){
         if(list&mask)
             {
+                
                 dmem.write(addr, rf[i]);
+                caches.access(addr);
                 addr += 4;                               
                 stats.numMemWrites++;
                 stats.numRegReads++;
@@ -613,6 +628,7 @@ void execute() {
         addr = PC + (ldrl.instr.ldrl.imm)*4;
       }
       // Requires two consecutive imem locations pieced together
+      caches.access(addr);
       temp = imem[addr] | (imem[addr+2]<<16);  // temp is a Data32
       rf.write(ldrl.instr.ldrl.rt, temp);
 
