@@ -12,6 +12,21 @@
 Stats stats;
 Caches caches(0);
 
+// Function BitCount
+
+unsigned int bitCount(unsigned int list, int n)
+{
+    int i = 0;
+    int mask = 1;
+    int count = 0;
+    for(i = 0, mask = 1; i < n; i++, mask <<=1)
+    {
+        if(mask&list)
+            count++;        
+    }
+    return count;
+}
+
 // CPE 315: you'll need to implement a custom sign-extension function
 // in addition to the ones given below, specifically for the unconditional
 // branch instruction, which has an 11-bit immediate field
@@ -19,12 +34,9 @@ unsigned int signExtend16to32ui(short i) {
   return static_cast<unsigned int>(static_cast<int>(i));
 }
 
-// From sources
-// https://stackoverflow.com/questions/42534749/signed-extension-from-24-bit-to-32-bit-in-c
-unsigned int signExtend11to32ui(uint32_t i) {
-  const int bits = 11;
-  uint32_t m = 1u << (bits - 1);
-  return (i ^ m) - m;
+unsigned int signExtend11to32ui(short i) {
+  unsigned int a = 1u << 10;
+  return (i ^ a) - a;
 }
 
 unsigned int signExtend8to32ui(char i) {
@@ -250,7 +262,8 @@ void execute() {
 
   // This counts as a write to the PC register
   rf.write(PC_REG, pctarget);
-
+  stats.numRegReads++;
+  stats.numRegWrites++;
   itype = decode(ALL_Types(instr));
 
   // CPE 315: The bulk of your work is in the following switch statement
@@ -315,12 +328,11 @@ void execute() {
           break;
         case ALU_SUB8I:         
           rf.write(alu.instr.sub8i.rdn, rf[alu.instr.sub8i.rdn] - alu.instr.sub8i.imm);
-          rf.write(alu.instr.sub8i.rdn, rf[alu.instr.sub8i.rdn] + alu.instr.sub8i.imm);
+          //rf.write(alu.instr.sub8i.rdn, rf[alu.instr.sub8i.rdn] + alu.instr.sub8i.imm);
           setNegativeZero(rf[alu.instr.sub8i.rdn], 32);
           setCarryOverflow(rf[alu.instr.sub8i.rdn], alu.instr.sub8i.imm, OF_SUB);
           stats.numRegWrites++;
           stats.numRegReads++;
-          break;
           break;
         default:
           cout << "instruction not implemented" << endl;
@@ -401,8 +413,8 @@ void execute() {
           // functionally complete, needs stats
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
           dmem.write(addr, rf[ld_st.instr.ld_st_imm.rt]);
-          stats.numRegReads+=2;
-          stats.numMemWrites++;          
+          stats.numRegReads += 2;
+          stats.numMemWrites++;  
           break;
         case LDRI:
           // functionally complete, needs stats
@@ -416,14 +428,14 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
           dmem.write(addr, rf[ld_st.instr.ld_st_reg.rt]);
-          stats.numRegReads+=3;
+          stats.numRegReads += 3;
           stats.numMemWrites++;          
           break;
         case LDRR:
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
           dmem.write(ld_st.instr.ld_st_reg.rt, dmem[addr]);
-          stats.numRegReads+=2;
+          stats.numRegReads += 2;
           stats.numRegWrites++;
           stats.numMemReads++; 
           break;
@@ -431,7 +443,7 @@ void execute() {
           // need to implement
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
           dmem.write(addr, rf[ld_st.instr.ld_st_imm.rt]);
-          stats.numRegReads+=2;
+          stats.numRegReads += 2;
           stats.numMemWrites++; 
           break;
         case LDRBI:
@@ -464,18 +476,21 @@ void execute() {
       switch(misc_ops) {
         case MISC_PUSH:
             n =16;
-            int list = misc.instr.push.m(n<<-2) | misc.instr.push.reg_list;
-            addr = SP - 4*BitCount(list, n);
-            for (int i =0,mask = 1 ;i < list ;i++, mask <<=1){
+            list = misc.instr.push.m << (n-2) | misc.instr.push.reg_list;
+            addr = SP - 4*bitCount(list, n);
+            // 1 read PC
+            stats.numRegReads++;
+            for ( i =0,mask = 1 ;i < n ;i++, mask <<=1){
                 if(list&mask){
                     //dmem.cache need to implement
                     dmem.write(addr, rf[i]);
-                    addr -= 4;
-                }
-                stats.numRegReads++;
-                stats.numMemWrites++;
-            } 
-            dmem.write(SP_REG, 4*BitCount(list,n));
+                    addr += 4;
+                    stats.numRegReads++;
+                    stats.numMemWrites++;
+                }                
+            }  
+            rf.write(SP_REG, SP - 4*bitCount(list,n));
+            stats.numRegWrites++;
             
           // need to implement         
           break;
@@ -483,22 +498,42 @@ void execute() {
           // need to implement
             n = 16;
             addr = SP;
-            list = misc.instr.push.m(n<<-2) | misc.instr.push.reg_list;
-            for (int i=0, mask = 1; i<list; i++, mask<<=1){
+            // 1 read PC
+            stats.numRegReads++;
+            list = misc.instr.pop.m << (n-1) | misc.instr.pop.reg_list;
+            for ( i=0, mask = 1; i<n; i++, mask<<=1){
                 if(list&mask){
-                    rf.write(i, dmem[addr]);
+                    if( i == 15)
+                    {
+                        rf.write(PC_REG, dmem[addr]);                       
+                    }
+                    else
+                    {
+                        rf.write(i, dmem[addr]);                       
+                    }
                     addr += 4;
+                    stats.numMemReads++;
+                    stats.numRegWrites++;
+                    
                 }
             }
-            dmem.write(SP_REG, 4*BitCount(list,n));
+            rf.write(SP_REG, addr);
+            stats.numRegWrites++;
           break;
         case MISC_SUB:
           // functionally complete, needs stats
           rf.write(SP_REG, SP - (misc.instr.sub.imm*4));
+          // 1 read PC
+          stats.numRegReads++;
+          stats.numRegWrites++;
           break;
         case MISC_ADD:
           // functionally complete, needs stats
           rf.write(SP_REG, SP + (misc.instr.add.imm*4));
+          // 1 read PC
+          stats.numRegReads++;
+          // 1 write to PC REG
+          stats.numRegWrites++;
           break;
       }
       break;
@@ -511,26 +546,61 @@ void execute() {
         rf.write(PC_REG, PC + 2 * signExtend8to32ui(cond.instr.b.imm) + 2);
       }
       stats.numRegWrites++;
+      // 1 read PC
+      stats.numRegReads++;
       break;
     case UNCOND:
       // Essentially the same as the conditional branches, but with no
       // condition check, and an 11-bit immediate field
       decode(uncond);
       rf.write(PC_REG, PC + 2 * signExtend11to32ui(cond.instr.b.imm) + 2);
+      
+      // Write to PC REG
       stats.numRegWrites++;
+      
+      // 1 read PC
+      stats.numRegReads++;
       break;
     case LDM:
       decode(ldm);
-      for(int i = 0; i < ldm.instr.ldm.reg_list; i++)
-      {
-        addr = rf[ldm.instr.ldm.rn] + i * 4;
-        rf.write(i, dmem[addr]);
-      }
       // need to implement
+      n = 16;
+      list = ldm.instr.ldm.reg_list;
+      addr = rf[ldm.instr.ldm.rn];
+      stats.numRegReads++;
+      for (i=0, mask = 1; i<n; i++, mask<<=1){
+        if(list&mask)
+            {
+                if(i == 15)
+                {
+                    rf.write(PC_REG, dmem[addr]);
+                    addr += 4;
+                }                    
+                else
+                {   rf.write(i, dmem[addr]);
+                    addr += 4;                
+                }
+                stats.numMemReads++;
+                stats.numRegWrites++;
+            }
+      }
       break;
     case STM:
       decode(stm);
       // need to implement
+      n = 16;
+      list = ldm.instr.ldm.reg_list;
+      addr = rf[ldm.instr.ldm.rn];
+      stats.numRegReads++;
+      for (i=0, mask = 1; i<n; i++, mask<<=1){
+        if(list&mask)
+            {
+                dmem.write(addr, rf[i]);
+                addr += 4;                               
+                stats.numMemWrites++;
+                stats.numRegReads++;
+            }
+      }
       break;
     case LDRL:
       // This instruction is complete, nothing needed
@@ -562,6 +632,7 @@ void execute() {
       break;
     default:
       cout << "[ERROR] Unknown Instruction to be executed" << endl;
+      cout << itype << endl;
       exit(1);
       break;
   }
