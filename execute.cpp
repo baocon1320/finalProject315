@@ -264,6 +264,7 @@ void execute() {
   rf.write(PC_REG, pctarget);
   stats.numRegReads++;
   stats.numRegWrites++;
+  stats.instrs++;
   itype = decode(ALL_Types(instr));
 
   // CPE 315: The bulk of your work is in the following switch statement
@@ -555,6 +556,20 @@ void execute() {
       // needs stats
       if (checkCondition(cond.instr.b.cond)){
         rf.write(PC_REG, PC + 2 * signExtend8to32ui(cond.instr.b.imm) + 2);
+      }
+      if(cond.instr.b.imm >> 7)
+      {
+          if (checkCondition(cond.instr.b.cond))
+            stats.numBackwardBranchesTaken++;
+          else
+            stats.numBackwardBranchesNotTaken++;
+      }
+      else
+      {
+          if (checkCondition(cond.instr.b.cond))
+              stats.numForwardBranchesTaken++;
+          else
+              stats.numForwardBranchesNotTaken++;
       }
       stats.numRegWrites++;
       // 1 read PC
