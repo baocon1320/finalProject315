@@ -191,7 +191,7 @@ SP_Ops decode (const SP_Type data) {
       if (data.instr.add.d) {
         // These two cases handle stack pointer printing
         if (data.instr.add.rd == 5) {
-          cout << " sp, r" << setbase(10) << data.instr.add.rm << endl;
+          cout << " sp, sp, r" << setbase(10) << data.instr.add.rm << endl;
         }
         else if (data.instr.add.rm == 13) {
           cout << " r" << setbase(10) << (8+data.instr.add.rd) << ", sp" << endl;
@@ -621,7 +621,7 @@ int decode (const STM_Type data) {
 int decode (const LDRL_Type data) {
   // 315: add code to print ldr
   if (opts.instrs) { 
-    cout << "ldr r" << data.instr.ldrl.rt << "[sp, #" << setbase(10) << data.instr.ldrl.imm*4 << "]" << endl;
+    cout << "ldr r" << data.instr.ldrl.rt << ", [pc, #" << setbase(10) << data.instr.ldrl.imm*4 << "]" << endl;
   }
   return LDRL;
 }

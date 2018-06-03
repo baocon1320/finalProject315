@@ -438,7 +438,7 @@ void execute() {
         case LDRR:
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
-          dmem.write(ld_st.instr.ld_st_reg.rt, dmem[addr]);
+          rf.write(ld_st.instr.ld_st_reg.rt, dmem[addr]);
           caches.access(addr);
           stats.numRegReads += 2;
           stats.numRegWrites++;
@@ -447,7 +447,9 @@ void execute() {
         case STRBI:
           // need to implement
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
-          dmem.write(addr, rf[ld_st.instr.ld_st_imm.rt]);
+          temp = dmem[addr];
+          temp.set_data_ubyte4(0, rf[ld_st.instr.ld_st_imm.rt].data_ubyte4(0));
+          dmem.write(addr, temp);
           caches.access(addr);
           stats.numRegReads += 2;
           stats.numMemWrites++; 
@@ -455,7 +457,7 @@ void execute() {
         case LDRBI:
           // need to implement
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
-          rf.write(ld_st.instr.ld_st_imm.rt, dmem[addr]);
+          rf.write(ld_st.instr.ld_st_imm.rt, dmem[addr].data_ubyte4(0));
           caches.access(addr);
           stats.numMemReads++;
           stats.numRegReads++;
@@ -464,8 +466,10 @@ void execute() {
         case STRBR:
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
-          
-          dmem.write(addr, rf[ld_st.instr.ld_st_reg.rt]);
+          temp = dmem[addr];
+          temp.set_data_ubyte4(0, rf[ld_st.instr.ld_st_imm.rt].data_ubyte4(0));
+          dmem.write(addr, temp);
+          //dmem.write(addr, rf[ld_st.instr.ld_st_reg.rt]);
           caches.access(addr);
           stats.numRegReads+=3;
           stats.numMemWrites++;
@@ -473,7 +477,7 @@ void execute() {
         case LDRBR:
           // need to implement
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
-          dmem.write(ld_st.instr.ld_st_reg.rt, dmem[addr]);
+          rf.write(ld_st.instr.ld_st_reg.rt, dmem[addr].data_ubyte4(0));
           caches.access(addr);
           stats.numRegReads+=2;
           stats.numRegWrites++;
@@ -557,7 +561,8 @@ void execute() {
       if (checkCondition(cond.instr.b.cond)){
         rf.write(PC_REG, PC + 2 * signExtend8to32ui(cond.instr.b.imm) + 2);
       }
-      if(cond.instr.b.imm >> 7)
+      
+      if(((cond.instr.b.imm << 8) >> 15) > 0)
       {
           if (checkCondition(cond.instr.b.cond))
             stats.numBackwardBranchesTaken++;
