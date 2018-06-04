@@ -398,6 +398,7 @@ void execute() {
           setCarryOverflow(rf[(sp.instr.add.d << 3) | sp.instr.add.rd], rf[sp.instr.add.rm], OF_ADD);
           stats.numRegReads += 2;
           stats.numRegWrites ++;
+          break;
         case SP_CMP:
           setNegativeZero(rf[(sp.instr.cmp.d << 3) | sp.instr.cmp.rd] - rf[sp.instr.cmp.rm],32);
           stats.numRegReads+=2;
@@ -560,9 +561,12 @@ void execute() {
       // needs stats
       if (checkCondition(cond.instr.b.cond)){
         rf.write(PC_REG, PC + 2 * signExtend8to32ui(cond.instr.b.imm) + 2);
-      }
-      
-      if(((cond.instr.b.imm << 8) >> 15) > 0)
+      	 stats.numRegWrites++;
+      // 1 read PC
+      	stats.numRegReads++;
+	}
+      offset = signExtend8to32ui(cond.instr.b.imm);
+      if(offset <= 0)
       {
           if (checkCondition(cond.instr.b.cond))
             stats.numBackwardBranchesTaken++;
@@ -576,9 +580,6 @@ void execute() {
           else
               stats.numForwardBranchesNotTaken++;
       }
-      stats.numRegWrites++;
-      // 1 read PC
-      stats.numRegReads++;
       break;
     case UNCOND:
       // Essentially the same as the conditional branches, but with no
