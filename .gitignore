@@ -4,4 +4,6 @@ thumbsim.dSYM/*
 *./outputs/*
 ./myOutput/*
 **myOutput/*
-
+nbproject/*
+./nbproject/*
+**./nbproject/*

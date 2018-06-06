@@ -17,7 +17,7 @@ Caches caches(0);
 unsigned int bitCount(unsigned int list, int n)
 {
     int i = 0;
-    int mask = 1;
+    unsigned int mask = 1;
     int count = 0;
     for(i = 0, mask = 1; i < n; i++, mask <<=1)
     {
@@ -317,6 +317,7 @@ void execute() {
           break;
         case ALU_CMP:
           setNegativeZero(rf[alu.instr.cmp.rdn] - alu.instr.cmp.imm, 32);
+          setCarryOverflow(rf[alu.instr.cmp.rdn], alu.instr.cmp.imm, OF_SUB);
           stats.numRegReads++;
           break;
         case ALU_ADD8I:
@@ -378,6 +379,8 @@ void execute() {
         case DP_CMP:
           // need to implement
           setNegativeZero(rf[dp.instr.DP_Instr.rdn] - rf[dp.instr.DP_Instr.rm], 32);
+          setCarryOverflow(rf[dp.instr.DP_Instr.rdn], rf[dp.instr.DP_Instr.rm], OF_SUB);
+          //setNegativeZero(rf[dp.instr.DP_Instr.rdn] - rf[dp.instr.DP_Instr.rm], 32);
           stats.numRegReads += 2;            
           break;
       }
@@ -401,6 +404,7 @@ void execute() {
           break;
         case SP_CMP:
           setNegativeZero(rf[(sp.instr.cmp.d << 3) | sp.instr.cmp.rd] - rf[sp.instr.cmp.rm],32);
+          setCarryOverflow(rf[(sp.instr.cmp.d << 3) | sp.instr.cmp.rd], rf[sp.instr.cmp.rm], OF_SUB);
           stats.numRegReads+=2;
           // need to implement these
           break;
@@ -458,7 +462,8 @@ void execute() {
         case LDRBI:
           // need to implement
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
-          rf.write(ld_st.instr.ld_st_imm.rt, dmem[addr].data_ubyte4(0));
+          temp = dmem[addr];
+          rf.write(ld_st.instr.ld_st_imm.rt, temp.data_ubyte4(0));
           caches.access(addr);
           stats.numMemReads++;
           stats.numRegReads++;
@@ -477,6 +482,7 @@ void execute() {
           break;
         case LDRBR:
           // need to implement
+            //ld_st.instr.ld_st_sp_imm
           addr = rf[ld_st.instr.ld_st_reg.rn] + rf[ld_st.instr.ld_st_reg.rm];
           rf.write(ld_st.instr.ld_st_reg.rt, dmem[addr].data_ubyte4(0));
           caches.access(addr);
@@ -493,10 +499,12 @@ void execute() {
             n =16;
             list = misc.instr.push.m << (n-2) | misc.instr.push.reg_list;
             addr = SP - 4*bitCount(list, n);
+            //cout << "bit count " << bitCount(list, n) << endl;
             // 1 read PC
             stats.numRegReads++;
             for ( i =0,mask = 1 ;i < n ;i++, mask <<=1){
                 if(list&mask){
+                    //cout << "bit is " << i << endl;
                     //dmem.cache need to implement
                     dmem.write(addr, rf[i]);
                     caches.access(addr);
@@ -505,6 +513,8 @@ void execute() {
                     stats.numMemWrites++;
                 }                
             }  
+            //if(misc.instr.push.m)
+              //  dmem.write(addr, LR_REG);
             rf.write(SP_REG, SP - 4*bitCount(list,n));
             stats.numRegWrites++;
             
@@ -585,7 +595,8 @@ void execute() {
       // Essentially the same as the conditional branches, but with no
       // condition check, and an 11-bit immediate field
       decode(uncond);
-      rf.write(PC_REG, PC + 2 * signExtend11to32ui(cond.instr.b.imm) + 2);
+      //cout << "11 bit " << uncond
+      rf.write(PC_REG, PC + 2 * signExtend11to32ui(uncond.instr.b.imm) + 2);
       
       // Write to PC REG
       stats.numRegWrites++;
@@ -596,13 +607,14 @@ void execute() {
     case LDM:
       decode(ldm);
       // need to implement
-      n = 16;
+      n = 8;
       list = ldm.instr.ldm.reg_list;
       addr = rf[ldm.instr.ldm.rn];
       stats.numRegReads++;
-      for (i=0, mask = 1; i<n; i++, mask<<=1){
+      for (i=0, mask = 1; i<8; i++, mask<<=1){
         if(list&mask)
             {
+            /*
                 if(i == 15)
                 {
                     rf.write(PC_REG, dmem[addr]);
@@ -610,26 +622,31 @@ void execute() {
                     addr += 4;
                 }                    
                 else
-                {   rf.write(i, dmem[addr]);
+             */
+                //{   
+                    rf.write(i, dmem[addr]);
                     caches.access(addr);
                     addr += 4;                
-                }
+                //}
                 stats.numMemReads++;
                 stats.numRegWrites++;
             }
       }
+      //rf.write(ldm.instr.ldm.rn, rf[ldm.instr.ldm.rn] + 4*bitCount(ldm.instr.ldm.reg_list, 8));
+      rf.write(ldm.instr.ldm.rn, addr);
+      stats.numRegWrites++;
       break;
     case STM:
       decode(stm);
       // need to implement
-      n = 16;
-      list = ldm.instr.ldm.reg_list;
-      addr = rf[ldm.instr.ldm.rn];
+      n = 8;
+      list = stm.instr.stm.reg_list;
+      addr = rf[stm.instr.stm.rn];
       stats.numRegReads++;
       for (i=0, mask = 1; i<n; i++, mask<<=1){
         if(list&mask)
             {
-                
+                //addr += 4; 
                 dmem.write(addr, rf[i]);
                 caches.access(addr);
                 addr += 4;                               
@@ -637,6 +654,9 @@ void execute() {
                 stats.numRegReads++;
             }
       }
+      rf.write(stm.instr.stm.rn, rf[stm.instr.stm.rn] + 4*bitCount(stm.instr.stm.reg_list, 8));
+      //rf.write(stm.instr.stm.rn, addr+4);
+      stats.numRegWrites++;
       break;
     case LDRL:
       // This instruction is complete, nothing needed

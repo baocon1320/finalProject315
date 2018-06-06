@@ -198,7 +198,9 @@ SP_Ops decode (const SP_Type data) {
         }
         // this case is for registers greater than r7 that aren't sp
         else {
-          cout << " r" << setbase(10) << (8+data.instr.add.rd) << ", r" << setbase(10) << data.instr.add.rm << endl;
+          cout << " r" << setbase(10) << (8+data.instr.add.rd) << ", r" 
+                  << setbase(10) << (8+data.instr.add.rd) << ", r" 
+                  << setbase(10) << data.instr.add.rm << endl;
         }
       }
       // another stack pointer case
@@ -206,7 +208,8 @@ SP_Ops decode (const SP_Type data) {
         cout << " r" << data.instr.add.rd << ", sp" << endl;
       }
       else {
-        cout << " r" << setbase(10) << data.instr.add.rd << ", r" << data.instr.add.rm << endl;
+        cout << " r" << setbase(10) << data.instr.add.rd << ", r" << setbase(10) << data.instr.add.rd << ", r" 
+                << data.instr.add.rm << endl;
       }
     }
     return SP_ADD;
@@ -564,7 +567,7 @@ int decode (const STM_Type data) {
   if (opts.instrs) {
       // Push is complete
       bool multiple = FALSE;      
-      cout << "stm r" << data.instr.stm.rn << "! {";
+      cout << "stm r" << data.instr.stm.rn << "!, {";
       if (data.instr.stm.reg_list & 1) {
         cout << "r0";
         multiple = TRUE;
