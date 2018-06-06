@@ -414,7 +414,7 @@ void execute() {
       // You'll want to use these load and store models
       // to implement ldrb/strb, ldm/stm and push/pop
       ldst_ops = decode(ld_st);
-      switch(ldst_ops) {
+      switch(ldst_ops) { 
         case STRI:
           // functionally complete, needs stats
           addr = rf[ld_st.instr.ld_st_imm.rn] + ld_st.instr.ld_st_imm.imm * 4;
@@ -669,7 +669,7 @@ void execute() {
         addr = PC + (ldrl.instr.ldrl.imm)*4;
       }
       // Requires two consecutive imem locations pieced together
-      caches.access(addr);
+      //caches.access(addr);
       temp = imem[addr] | (imem[addr+2]<<16);  // temp is a Data32
       rf.write(ldrl.instr.ldrl.rt, temp);
 
